@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
-import { FileText, Clock, ChevronRight, RefreshCw, Download } from 'lucide-react'
+import { FileText, RefreshCw, Download } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function ReportsPage() {
@@ -57,10 +57,7 @@ export default function ReportsPage() {
     audit: 'Audit Log',
   }
 
-  const statusColors: Record<string, string> = {
-    ready: '#10b981', generating: '#06b6d4', failed: '#ef4444',
-  }
-
+  
   const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
 
   return (

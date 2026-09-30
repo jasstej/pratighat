@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { PageHeader, DataTable, LoadingState } from '../components/shared'
-import { ScrollText, ChevronRight, RefreshCw, Search } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { PageHeader, LoadingState } from '../components/shared'
+import { RefreshCw } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function AuditPage() {

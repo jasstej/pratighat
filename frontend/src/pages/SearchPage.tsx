@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { PageHeader, DataTable, LoadingState } from '../components/shared'
+import { PageHeader } from '../components/shared'
 import { Search as SearchIcon, RefreshCw, Clock } from 'lucide-react'
 import { api } from '../utils/api'
-import { formatDistanceToNow } from 'date-fns'
 
 export default function SearchPage() {
   const [orgId, setOrgId] = useState<number | null>(null)
@@ -13,7 +12,7 @@ export default function SearchPage() {
   const [total, setTotal] = useState(0)
   const [took, setTook] = useState(0)
   const [categories, setCategories] = useState<Record<string, number>>({})
-  const [refreshing, setRefreshing] = useState(false)
+  const [, setRefreshing] = useState(false)
 
   useEffect(() => {
     const userData = localStorage.getItem('pratighat_user')

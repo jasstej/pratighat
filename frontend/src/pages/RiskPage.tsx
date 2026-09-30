@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
-import { Target, ChevronRight, RefreshCw, CheckCircle, XCircle, AlertTriangle } from 'lucide-react'
+import { Target, RefreshCw, AlertTriangle } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function RiskPage() {
   const [orgId, setOrgId] = useState<number | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedSeverity, setSelectedSeverity] = useState<string>('')
-  const [findings, setFindings] = useState<any[]>([])
+  const [, setFindings] = useState<any[]>([])
   const [risks, setRisks] = useState<any[]>([])
   const [refreshTrigger, setRefreshTrigger] = useState(0)
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { PageHeader, StatCard, DataTable, StatusBadge, EmptyState, LoadingState } from '../components/shared'
-import { ClipboardList, Shield, Play, Calendar, CheckCircle, AlertTriangle, ChevronRight, RefreshCw, Plus, Clock } from 'lucide-react'
+import { PageHeader, StatCard, DataTable, StatusBadge, LoadingState } from '../components/shared'
+import { ClipboardList, Shield, Play, CheckCircle, ChevronRight, RefreshCw, Plus, Clock } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function AssessmentsPage() {
@@ -10,8 +10,8 @@ export default function AssessmentsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const [pageSize] = useState(15)
-  const [statusFilter, setStatusFilter] = useState('')
-  const [typeFilter, setTypeFilter] = useState('')
+  const [statusFilter] = useState('')
+  const [typeFilter] = useState('')
   const [selected, setSelected] = useState<any>(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
@@ -123,12 +123,7 @@ export default function AssessmentsPage() {
     }
   }
 
-  const statusColors: Record<string, string> = {
-    created: '#64748b', scope_defined: '#3b82f6', approved: '#10b981',
-    pending: '#f59e0b', running: '#06b6d4', paused: '#8b5cf6',
-    completed: '#10b981', cancelled: '#64748b', failed: '#ef4444', rejected: '#ef4444',
-  }
-
+  
   const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
 
   return (

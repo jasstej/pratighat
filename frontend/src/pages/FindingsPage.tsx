@@ -1,7 +1,6 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
-import { PageHeader, StatCard, DataTable, StatusBadge, EmptyState, LoadingState } from '../components/shared'
-import { Bug, AlertTriangle, Target, Clock, CheckCircle, Brain, ExternalLink, ChevronRight, Filter, Download, RefreshCw } from 'lucide-react'
+import { PageHeader, StatCard, DataTable, StatusBadge, LoadingState } from '../components/shared'
+import { Bug, AlertTriangle, Target, CheckCircle, ChevronRight, RefreshCw } from 'lucide-react'
 import { api } from '../utils/api'
 import { useState, useEffect } from 'react'
 import { formatDistanceToNow } from 'date-fns'
@@ -27,7 +26,7 @@ export default function FindingsPage() {
     }
   }, [])
 
-  const loadFindings = async (reset = true) => {
+  const loadFindings = async () => {
     if (!orgId) return
     setLoading(true)
     try {
@@ -73,14 +72,7 @@ export default function FindingsPage() {
     return colors[s] || '#64748b'
   }
 
-  const getStatusColor = (s: string) => {
-    const colors: Record<string, string> = {
-      open: '#f59e0b', confirmed: '#ef4444', in_progress: '#3b82f6',
-      remediated: '#10b981', verified: '#10b981', false_positive: '#64748b', closed: '#64748b',
-    }
-    return colors[s] || '#64748b'
-  }
-
+  
   const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
 
   return (

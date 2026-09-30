@@ -60,14 +60,19 @@ async def register(
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Username or email already registered")
 
+    # First user gets super_admin role automatically
+    existing = await session.execute(select(UserModel).limit(1))
+    first_user = existing.scalar_one_or_none()
+    is_first = first_user is None
+
     user = UserModel(
         username=data.username,
         email=data.email,
         full_name=data.full_name,
         hashed_password=hash_password(data.password),
-        role="viewer",
+        role="super_admin" if is_first else "viewer",
         is_active=True,
-        is_super_admin=False,
+        is_super_admin=is_first,
     )
 
     session.add(user)

@@ -282,11 +282,11 @@ async def add_finding_evidence_api(
 @router_risk.post("", status_code=201, summary="Calculate risk for a finding")
 async def create_risk_api(
     data: RiskCreateRequest,
-    org_id: int = Query(...),
     current_user: CurrentUser = Depends(require_permission(Permission.RISK_UPDATE)),
     session: AsyncSession = Depends(get_session),
 ) -> RiskBrief:
-    r = await create_risk(session, org_id, data)
+    # org_id comes from the finding itself, not a query param
+    r = await create_risk(session, data.finding_id, data)
     return RiskBrief(id=r.id, risk_level=r.risk_level.value, risk_score=r.risk_score, likelihood=r.likelihood, impact=r.impact)
 
 

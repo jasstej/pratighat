@@ -37,6 +37,7 @@ from app.schemas.alert_audit_agent_report_ai_search import (
     AIAnalysisRequest, AIAnalysisResponse,
     GlobalSearchResponse,
     PaginationParams,
+    PaginatedResponse,
 )
 
 logger = logging.getLogger("pratighat.api")
@@ -63,9 +64,9 @@ async def generate_report_api(
     return await generate_report(session, data, current_user)
 
 
-@router_reports.get("", summary="List generated reports")
+@router_reports.get("", response_model=PaginatedResponse[ReportBrief], summary="List generated reports")
 async def list_reports_api(
-    org_id: int = Query(...),
+    org_id: int = Query(1),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     report_type: str | None = Query(None),
@@ -91,7 +92,7 @@ async def get_report_api(
 
 @router_agents.post("/register", summary="Register a new node agent")
 async def register_agent_api(
-    org_id: int = Query(...),
+    org_id: int = Query(1),
     hostname: str = Query(...),
     node_type: str = Query(default="agent"),
     formation_id: int | None = Query(None),
@@ -271,7 +272,7 @@ async def analyze_query(
     context = dict(data.context or {})
     context.setdefault("user_id", current_user.id)
     context.setdefault("organization_id", current_user.organization_id)
-    return analyze(
+    return await analyze(
         data.query,
         context,
         data.scope_filters,

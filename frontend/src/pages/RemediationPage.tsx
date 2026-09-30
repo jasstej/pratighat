@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
-import { ShieldCheck, Clock, CheckCircle, AlertTriangle, ChevronRight, RefreshCw, ExternalLink, XCircle } from 'lucide-react'
+import { Clock, CheckCircle, AlertTriangle, ChevronRight, RefreshCw, XCircle } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function RemediationPage() {
@@ -11,10 +11,9 @@ export default function RemediationPage() {
   const [total, setTotal] = useState(0)
   const [pageSize] = useState(20)
   const [statusFilter, setStatusFilter] = useState('')
-  const [priorityFilter, setPriorityFilter] = useState<number | null>(null)
+  const [priorityFilter] = useState<number | null>(null)
   const [selected, setSelected] = useState<any>(null)
   const [detailLoading, setDetailLoading] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [verifyLoading, setVerifyLoading] = useState(false)
 
@@ -77,13 +76,7 @@ export default function RemediationPage() {
     }
   }
 
-  const statusColors: Record<string, string> = {
-    open: '#f59e0b', in_progress: '#3b82f6', in_queue: '#8b5cf6',
-    pending_verification: '#f59e0b', verified_fixed: '#10b981',
-    verified_not_fixed: '#ef4444', accepted_risk: '#64748b',
-    closed: '#64748b', overdue: '#ef4444',
-  }
-
+  
   const totalPages = Math.max(1, Math.ceil((total || 0) / pageSize))
 
   return (

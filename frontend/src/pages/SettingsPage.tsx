@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { PageHeader } from '../components/shared'
-import { Settings, User, Shield, Globe, Bell, Key, Database, Smartphone, Activity, HelpCircle } from 'lucide-react'
+import { Settings, User, Globe, Bell, Key, Database, Smartphone, HelpCircle } from 'lucide-react'
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('general')

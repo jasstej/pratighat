@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { PageHeader, StatCard, StatusBadge, LoadingState } from '../components/shared'
+import { useState, useEffect } from 'react'
+import { PageHeader, StatCard, StatusBadge } from '../components/shared'
 import { Bug, Shield, AlertTriangle, Target, CheckCircle, Clock, ArrowUpRight, TrendingUp, Activity } from 'lucide-react'
 import { api } from '../utils/api'
 
@@ -60,10 +60,7 @@ export default function DashboardPage() {
   const overdueRemediations = data?.remediations.filter((r: any) => r.status === 'overdue').length || 0
   const verifiedRemediations = data?.remediations.filter((r: any) => r.status === 'verified_fixed').length || 0
 
-  const severityColors: Record<string, string> = {
-    CRITICAL: '#ef4444', HIGH: '#f97316', MEDIUM: '#f59e0b', LOW: '#3b82f6', INFO: '#64748b',
-  }
-
+  
   if (loading) return <div className="page"><div className="loading-state page-loading"><div className="loading-spinner-lg" /><p>Loading dashboard...</p></div></div>
   if (!data) return null
 

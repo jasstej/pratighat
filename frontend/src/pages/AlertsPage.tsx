@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
 import { AlertTriangle, CheckCircle, Clock, ChevronRight, RefreshCw } from 'lucide-react'
 import { api } from '../utils/api'

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { PageHeader, DataTable, StatusBadge, EmptyState, LoadingState } from '../components/shared'
-import { Shield, ChevronRight, RefreshCw, Plus, Globe, Network, Server } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
+import { Shield, ChevronRight, RefreshCw, Globe, Network, Server } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function FormationsPage() {

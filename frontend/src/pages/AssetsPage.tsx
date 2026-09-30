@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react'
-import { PageHeader, StatCard, DataTable, StatusBadge, EmptyState, LoadingState } from '../components/shared'
-import { Server, Network, Globe, HardDrive, Activity, Shield, ChevronRight, RefreshCw, Plus, Filter } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { PageHeader, StatCard, DataTable, LoadingState } from '../components/shared'
+import { Server, Network, Globe, HardDrive, RefreshCw } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function AssetsPage() {
