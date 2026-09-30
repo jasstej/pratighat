@@ -34,7 +34,7 @@ export default function DashboardPage() {
         api.listAlerts(orgId, { page_size: 100 }),
         api.listRemediations(orgId, { page_size: 100 }),
       ])
-      setData({ assets: assets.items || [], findings: findings.items || [], assessments: assessments.items || [], alerts: alerts.items || [], remediations: remediations.items || [] })
+      setData({ assets: assets.items || [], findings: findings.items || [], assessments: assessments.items || [], alerts: alerts.items || [], remediations: remediations.items || [], nodes: [] })
     } catch (err) {
       console.error('Dashboard load failed:', err)
     } finally {

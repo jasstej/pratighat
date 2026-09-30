@@ -252,7 +252,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
-    organization: Mapped[Optional["Organization"]] = relationship("Organization", back_populates="users", lazy="selectin")
+    organization: Mapped[Optional["Organization"]] = relationship("Organization", back_populates="users", lazy="selectin", foreign_keys=[organization_id])
     assessments_led: Mapped[List["Assessment"]] = relationship("Assessment", back_populates="assessor", lazy="selectin", foreign_keys="Assessment.assessor_id")
     created_organizations: Mapped[List["Organization"]] = relationship("Organization", back_populates="created_by_user", lazy="selectin", foreign_keys="Organization.created_by_id")
     audit_events: Mapped[List["AuditEvent"]] = relationship("AuditEvent", back_populates="actor_user", lazy="selectin", foreign_keys="AuditEvent.actor_user_id")
@@ -282,8 +282,8 @@ class Organization(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
-    created_by_user: Mapped[Optional[User]] = relationship("User", back_populates="created_organizations", lazy="selectin")
-    users: Mapped[List[User]] = relationship("User", back_populates="organization", lazy="selectin")
+    created_by_user: Mapped[Optional[User]] = relationship("User", back_populates="created_organizations", lazy="selectin", foreign_keys="Organization.created_by_id")
+    users: Mapped[List[User]] = relationship("User", back_populates="organization", lazy="selectin", foreign_keys="User.organization_id")
     formations: Mapped[List["Formation"]] = relationship("Formation", back_populates="organization", lazy="selectin", cascade="all, delete-orphan")
     scanners: Mapped[List["Scanner"]] = relationship("Scanner", back_populates="organization", lazy="selectin", cascade="all, delete-orphan")
     audit_events_as_org: Mapped[List["AuditEvent"]] = relationship("AuditEvent", back_populates="organization_obj", lazy="selectin", foreign_keys="AuditEvent.organization_id")
@@ -315,7 +315,7 @@ class Formation(Base):
     )
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", back_populates="formations", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="formations", lazy="selectin", foreign_keys="Formation.organization_id")
     parent: Mapped[Optional["Formation"]] = relationship("Formation", back_populates="children", remote_side=[id], lazy="selectin")
     children: Mapped[List["Formation"]] = relationship("Formation", back_populates="parent", lazy="selectin")
     units: Mapped[List["Unit"]] = relationship("Unit", back_populates="formation", lazy="selectin", cascade="all, delete-orphan")
@@ -352,7 +352,7 @@ class Unit(Base):
     )
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Unit.organization_id")
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="units", lazy="selectin")
     parent: Mapped[Optional["Unit"]] = relationship("Unit", back_populates="children", remote_side=[id], lazy="selectin")
     children: Mapped[List["Unit"]] = relationship("Unit", back_populates="parent", lazy="selectin")
@@ -391,7 +391,7 @@ class Site(Base):
     )
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Site.organization_id")
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="sites", lazy="selectin")
     unit: Mapped[Optional[Unit]] = relationship("Unit", back_populates="sites", lazy="selectin")
     parent: Mapped[Optional["Site"]] = relationship("Site", back_populates="children", remote_side=[id], lazy="selectin")
@@ -433,7 +433,7 @@ class Network(Base):
     )
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Network.organization_id")
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="networks", lazy="selectin")
     unit: Mapped[Optional[Unit]] = relationship("Unit", back_populates="networks", lazy="selectin")
     site: Mapped[Optional[Site]] = relationship("Site", back_populates="networks", lazy="selectin")
@@ -490,12 +490,12 @@ class Asset(Base):
     )
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Asset.organization_id")
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="assets", lazy="selectin")
     unit: Mapped[Optional[Unit]] = relationship("Unit", back_populates="assets", lazy="selectin")
     site: Mapped[Optional[Site]] = relationship("Site", back_populates="assets", lazy="selectin")
     network: Mapped[Optional[Network]] = relationship("Network", back_populates="assets", lazy="selectin")
-    owner: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    owner: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Asset.owner_id")
     parent: Mapped[Optional["Asset"]] = relationship("Asset", back_populates="children", remote_side=[id], lazy="selectin")
     children: Mapped[List["Asset"]] = relationship("Asset", back_populates="parent", lazy="selectin")
     services: Mapped[List["Service"]] = relationship("Service", back_populates="asset", lazy="selectin", cascade="all, delete-orphan")
@@ -567,9 +567,9 @@ class Node(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", back_populates="agents", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="agents", lazy="selectin", foreign_keys="Node.organization_id")
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="agents", lazy="selectin")
-    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Node.created_by_id")
 
 
 # ---------------------------------------------------------------------------
@@ -591,7 +591,7 @@ class Scanner(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    organization: Mapped[Organization] = relationship("Organization", back_populates="scanners", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", back_populates="scanners", lazy="selectin", foreign_keys="Scanner.organization_id")
 
 
 # ---------------------------------------------------------------------------
@@ -649,7 +649,7 @@ class Assessment(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Assessment.organization_id")
     authorized_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys=[authorized_by_id])
     assessor: Mapped[Optional[User]] = relationship("User", back_populates="assessments_led", lazy="selectin", foreign_keys=[assessor_id])
     formation: Mapped[Optional[Formation]] = relationship("Formation", back_populates="assessments", lazy="selectin")
@@ -740,11 +740,11 @@ class Finding(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     # Relationships
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Finding.organization_id")
     assessment: Mapped[Optional[Assessment]] = relationship("Assessment", back_populates="findings", lazy="selectin")
     asset: Mapped[Optional[Asset]] = relationship("Asset", back_populates="findings", lazy="selectin")
     service: Mapped[Optional[Service]] = relationship("Service", back_populates="findings", lazy="selectin")
-    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Finding.created_by_id")
     evidence_items: Mapped[List["FindingEvidence"]] = relationship("FindingEvidence", back_populates="finding", lazy="selectin", cascade="all, delete-orphan")
     remediation_items: Mapped[List["Remediation"]] = relationship("Remediation", back_populates="finding", lazy="selectin", cascade="all, delete-orphan")
     alerts: Mapped[List["Alert"]] = relationship("Alert", back_populates="finding", lazy="selectin", cascade="all, delete-orphan")
@@ -811,7 +811,7 @@ class Risk(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
     finding: Mapped[Finding] = relationship("Finding", back_populates="risk_score", lazy="selectin")
-    organization_obj: Mapped[Organization] = relationship("Organization", lazy="selectin")
+    organization_obj: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Risk.organization_id")
 
 
 # ---------------------------------------------------------------------------
@@ -853,8 +853,8 @@ class Remediation(Base):
 
     finding: Mapped[Optional[Finding]] = relationship("Finding", back_populates="remediation_items", lazy="selectin")
     assessment: Mapped[Optional[Assessment]] = relationship("Assessment", back_populates="remediation_items", lazy="selectin")
-    assigned_to: Mapped[Optional[User]] = relationship("User", lazy="selectin")
-    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    assigned_to: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Remediation.assigned_to_id")
+    created_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Remediation.created_by_id")
 
 
 # ---------------------------------------------------------------------------
@@ -897,9 +897,9 @@ class Alert(Base):
 
     finding: Mapped[Optional[Finding]] = relationship("Finding", back_populates="alerts", lazy="selectin")
     assessment: Mapped[Optional[Assessment]] = relationship("Assessment", back_populates="alerts", lazy="selectin")
-    triggered_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
-    acknowledged_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
-    resolved_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    triggered_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Alert.triggered_by_id")
+    acknowledged_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Alert.acknowledged_by_id")
+    resolved_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Alert.resolved_by_id")
 
 
 # ---------------------------------------------------------------------------
@@ -941,8 +941,8 @@ class AuditEvent(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
 
-    organization_obj: Mapped[Optional[Organization]] = relationship("Organization", back_populates="audit_events_as_org", lazy="selectin")
-    actor_user: Mapped[Optional[User]] = relationship("User", back_populates="audit_events", lazy="selectin")
+    organization_obj: Mapped[Optional[Organization]] = relationship("Organization", back_populates="audit_events_as_org", lazy="selectin", foreign_keys="AuditEvent.organization_id")
+    actor_user: Mapped[Optional[User]] = relationship("User", back_populates="audit_events", lazy="selectin", foreign_keys="AuditEvent.actor_user_id")
 
 
 # ---------------------------------------------------------------------------
@@ -1005,8 +1005,8 @@ class Report(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc), nullable=False)
 
-    organization: Mapped[Organization] = relationship("Organization", lazy="selectin")
-    generated_by: Mapped[Optional[User]] = relationship("User", lazy="selectin")
+    organization: Mapped[Organization] = relationship("Organization", lazy="selectin", foreign_keys="Report.scope_organization_id")
+    generated_by: Mapped[Optional[User]] = relationship("User", lazy="selectin", foreign_keys="Report.generated_by_id")
 
 
 # ---------------------------------------------------------------------------

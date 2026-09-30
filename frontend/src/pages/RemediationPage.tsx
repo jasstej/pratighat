@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { PageHeader, DataTable, StatusBadge, LoadingState } from '../components/shared'
-import { ShieldCheck, Clock, CheckCircle, AlertTriangle, ChevronRight, RefreshCw, ExternalLink } from 'lucide-react'
+import { ShieldCheck, Clock, CheckCircle, AlertTriangle, ChevronRight, RefreshCw, ExternalLink, XCircle } from 'lucide-react'
 import { api } from '../utils/api'
 
 export default function RemediationPage() {

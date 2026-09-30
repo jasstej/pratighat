@@ -148,7 +148,7 @@ async def run_assessment_api(
 async def update_assessment_status_api(
     aid: int = Path(...),
     new_status: str = Path(...),
-    log_entry: dict | None = Query(None),
+    log_entry: str | None = Query(None),
     current_user: CurrentUser = Depends(require_permission(Permission.ASSESSMENT_UPDATE)),
     session: AsyncSession = Depends(get_session),
 ) -> dict:

@@ -16,13 +16,14 @@ from app.services.organization import (
     update_organization,
     delete_organization,
 )
-from app.schemas.auth_organization import (
+from app.schemas.alert_audit_agent_report_ai_search import (
     OrganizationCreateRequest,
     OrganizationUpdateRequest,
     OrganizationBrief,
     OrganizationDetail,
-    OrganizationWithUserCount,
+    PaginatedResponse,
 )
+from app.schemas.auth_organization import OrganizationWithUserCount
 from app.schemas.hierarchy import HierarchyTree
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
@@ -38,7 +39,7 @@ async def create_org(
     return OrganizationBrief.model_validate(org)
 
 
-@router.get("", response_model=OrganizationWithUserCount, summary="List organizations")
+@router.get("", response_model=PaginatedResponse[OrganizationWithUserCount], summary="List organizations")
 async def list_orgs(
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
@@ -46,12 +47,10 @@ async def list_orgs(
     current_user: CurrentUser = Depends(require_permission(Permission.ORGANIZATION_VIEW)),
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    result = await list_organizations(session, page, page_size, search)
-    from app.schemas.auth_organization import OrganizationWithUserCount as OWC
-    items = []
-    for org_dict in result["items"]:
-        items.append(OWC(**org_dict))
-    return dict(result, items=items)
+    # service already returns the {items,total,page,page_size,pages} envelope with
+    # OrganisationWithUserCount items — the previous response_model declared a
+    # single organization, which failed validation on every request
+    return await list_organizations(session, page, page_size, search)
 
 
 @router.get("/me", response_model=OrganizationBrief, summary="Get current user's organization")
@@ -154,7 +153,7 @@ async def get_hierarchy(
     session: AsyncSession = Depends(get_session),
 ) -> HierarchyTree:
     from app.services.hierarchy import list_formations
-    from app.models.organization import Organization
+    from app.models import Organization
 
     org = await get_organization_by_id(session, org_id)
     if not org:

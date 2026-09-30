@@ -6,13 +6,14 @@ Asset inventory, service registry, node/agent management.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query, HTTPException, Path
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
 from app.core.security import CurrentUser, Permission, require_permission
-from app.models.asset import Asset, AssetType, Environment, Exposure, AssetStatus
-from app.models.service import Service, ServiceType
-from app.models.node import Node, NodeStatus, NodeType
+from app.models import Asset, AssetType, Environment, Exposure, AssetStatus
+from app.models import Service, ServiceType
+from app.models import Node, NodeStatus, NodeType
 
 router_assets = APIRouter(prefix="/assets", tags=["Assets"])
 router_services = APIRouter(prefix="/services", tags=["Services"])

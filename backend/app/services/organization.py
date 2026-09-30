@@ -14,9 +14,9 @@ from sqlalchemy import update
 from sqlalchemy import or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.organization import Organization
-from app.models.user import User
-from app.schemas.auth_organization import OrganizationCreateRequest, OrganizationUpdateRequest
+from app.models import Organization
+from app.models import User
+from app.schemas.alert_audit_agent_report_ai_search import OrganizationCreateRequest, OrganizationUpdateRequest
 
 logger = logging.getLogger("pratighat.service.org")
 

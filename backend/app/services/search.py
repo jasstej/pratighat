@@ -12,18 +12,18 @@ from typing import Optional
 from sqlalchemy import or_, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.formation import Formation
-from app.models.unit import Unit
-from app.models.site import Site
-from app.models.network import Network
-from app.models.asset import Asset
-from app.models.service import Service
-from app.models.finding import Finding
-from app.models.assessment import Assessment
-from app.models.remediation import Remediation
-from app.models.alert import Alert
-from app.models.audit import AuditEvent
-from app.models.node import Node
+from app.models import Formation
+from app.models import Unit
+from app.models import Site
+from app.models import Network
+from app.models import Asset
+from app.models import Service
+from app.models import Finding
+from app.models import Assessment
+from app.models import Remediation
+from app.models import Alert
+from app.models import AuditEvent
+from app.models import Node
 
 
 async def search_all(

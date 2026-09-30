@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.alert import Alert, AlertSeverity, AlertStatus
+from app.models import Alert, AlertSeverity, AlertStatus
 from app.schemas.alert_audit_agent_report_ai_search import (
     AlertCreateRequest,
     AlertUpdateRequest,

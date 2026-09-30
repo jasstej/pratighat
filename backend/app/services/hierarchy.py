@@ -10,10 +10,10 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.formation import Formation
-from app.models.unit import Unit
-from app.models.site import Site
-from app.models.network import Network
+from app.models import Formation
+from app.models import Unit
+from app.models import Site
+from app.models import Network
 from app.schemas.hierarchy import (
     FormationBriefWithChildren,
     UnitBriefWithParent,

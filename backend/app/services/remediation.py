@@ -10,7 +10,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.remediation import Remediation, RemediationStatus
+from app.models import Remediation, RemediationStatus
 from app.schemas.alert_audit_agent_report_ai_search import (
     RemediationCreateRequest,
     RemediationUpdateRequest,
@@ -85,7 +85,7 @@ async def list_remediations(
     result = await session.execute(query)
     items = list(result.scalars().all())
 
-    from app.schemas.finding_risk_remediation import RemediationBrief, RemediationDetail
+    from app.schemas.alert_audit_agent_report_ai_search import RemediationBrief, RemediationDetail
 
     briefs = [
         RemediationBrief(

@@ -11,7 +11,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.node import Node, NodeStatus, NodeType
+from app.models import Node, NodeStatus, NodeType
 from app.schemas.alert_audit_agent_report_ai_search import (
     NodeAuthResponse,
     AgentHeartbeat,
@@ -94,7 +94,7 @@ async def process_heartbeat(
     from app.core.security import decode_token
 
     # Simplified: heartbeat updates the node's last_heartbeat_at
-    from app.models.node import Node
+    from app.models import Node
     result = await session.execute(select(Node).where(Node.status == NodeStatus.ONLINE))
     node = result.scalar_one_or_none()
     if node:

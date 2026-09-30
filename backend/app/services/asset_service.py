@@ -10,9 +10,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.asset import Asset, AssetType, Environment, Exposure, AssetStatus
-from app.models.service import Service, ServiceType
-from app.schemas.asset_service import (
+from app.models import Asset, AssetType, Environment, Exposure, AssetStatus
+from app.models import Service, ServiceType
+from app.schemas.alert_audit_agent_report_ai_search import (
     AssetCreateRequest,
     AssetUpdateRequest,
     ServiceCreateRequest,
@@ -139,7 +139,7 @@ async def list_assets(
     result = await session.execute(query)
     assets = result.scalars().all()
 
-    from app.schemas.asset_service import AssetBrief
+    from app.schemas.alert_audit_agent_report_ai_search import AssetBrief
 
     items = [
         AssetBrief(
@@ -250,7 +250,7 @@ async def list_services(
     result = await session.execute(query)
     services = result.scalars().all()
 
-    from app.schemas.asset_service import ServiceBrief
+    from app.schemas.alert_audit_agent_report_ai_search import ServiceBrief
 
     items = [
         ServiceBrief(

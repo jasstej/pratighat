@@ -10,9 +10,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.assessment import Assessment, AssessmentStatus, AssessmentType
-from app.models.assessment_asset import AssessmentAsset
-from app.schemas.assessment import AssessmentCreateRequest, AssessmentRunRequest
+from app.models import Assessment, AssessmentStatus, AssessmentType
+from app.models import AssessmentAsset
+from app.schemas.alert_audit_agent_report_ai_search import AssessmentCreateRequest, AssessmentRunRequest
 
 
 async def create_assessment(
@@ -135,7 +135,7 @@ async def list_assessments(
     result = await session.execute(query)
     assessments = result.scalars().all()
 
-    from app.schemas.assessment import AssessmentBrief
+    from app.schemas.alert_audit_agent_report_ai_search import AssessmentBrief
 
     items = [
         AssessmentBrief(

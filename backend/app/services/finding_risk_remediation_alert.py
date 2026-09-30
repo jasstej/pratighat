@@ -10,12 +10,12 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.finding import Finding, FindingSeverity, FindingStatus
-from app.models.finding_evidence import FindingEvidence
-from app.models.risk import Risk, RiskLevel
-from app.models.remediation import Remediation, RemediationStatus
-from app.models.alert import Alert, AlertSeverity, AlertStatus
-from app.schemas.finding_risk_remediation import (
+from app.models import Finding, FindingSeverity, FindingStatus
+from app.models import FindingEvidence
+from app.models import Risk, RiskLevel
+from app.models import Remediation, RemediationStatus
+from app.models import Alert, AlertSeverity, AlertStatus
+from app.schemas.alert_audit_agent_report_ai_search import (
     FindingCreateRequest,
     FindingUpdateRequest,
     RiskCreateRequest,
@@ -148,7 +148,7 @@ async def list_findings(
     result = await session.execute(query)
     findings = result.scalars().all()
 
-    from app.schemas.finding_risk_remediation import FindingBrief
+    from app.schemas.alert_audit_agent_report_ai_search import FindingBrief
 
     items = [
         FindingBrief(
@@ -397,7 +397,7 @@ async def list_remediations(
     result = await session.execute(query)
     remediations = result.scalars().all()
 
-    from app.schemas.finding_risk_remediation import RemediationBrief
+    from app.schemas.alert_audit_agent_report_ai_search import RemediationBrief
 
     items = [
         RemediationBrief(

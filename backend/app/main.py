@@ -32,9 +32,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator:
     logger.info("Pratighat.ai starting up — %s v%s", settings.app_name, settings.app_version)
     try:
         await init_db()
-        logger.info("Database initialized")
+        logger.info("Database initialized (tables ensured)")
     except Exception as e:
-        logger.warning("Database init skipped (might be already initialized): %s", e)
+        # Log loudly: create_all is a development convenience, not a substitute
+        # for Alembic migrations. A silent warning here hides a broken database.
+        logger.error("Database init FAILED — %s: %s", type(e).__name__, e)
     yield
     logger.info("Pratighat.ai shutting down")
     await engine.dispose()
@@ -84,27 +86,48 @@ def create_application() -> FastAPI:
             },
         )
 
+    # Domain error handler
+    # Services signal business-rule violations by raising ValueError (e.g. duplicate
+    # slug). Without this they surfaced as unhandled 500s with a raw traceback body.
+    @app.exception_handler(ValueError)
+    async def value_error_handler(request: Request, exc: ValueError):
+        detail = str(exc)
+        logger.warning("Domain error on %s %s: %s", request.method, request.url.path, detail)
+        status_code = 409 if "exist" in detail.lower() or "duplicate" in detail.lower() else 400
+        return JSONResponse(
+            status_code=status_code,
+            content={
+                "error": True,
+                "detail": detail,
+                "code": "CONFLICT" if status_code == 409 else "BAD_REQUEST",
+            },
+        )
+
     # Register routers
-    app.include_router(auth.router, prefix="/api/auth")
+    # Each router already declares its own path prefix (e.g. APIRouter(prefix="/auth")),
+    # so only the global /api prefix is applied here. Re-adding the module prefix
+    # would produce doubled segments like /api/auth/auth/login.
+    app.include_router(auth.router, prefix="/api")
     app.include_router(organizations.router, prefix="/api")
-    app.include_router(hierarchy.router_formation, prefix="/api/formations")
-    app.include_router(hierarchy.router_unit, prefix="/api/units")
-    app.include_router(hierarchy.router_site, prefix="/api/sites")
-    app.include_router(hierarchy.router_network, prefix="/api/networks")
-    app.include_router(assets_services_nodes.router_assets, prefix="/api/assets")
-    app.include_router(assets_services_nodes.router_services, prefix="/api/services")
-    app.include_router(assets_services_nodes.router_nodes, prefix="/api/nodes")
-    app.include_router(assessments_findings_risk_remediation_alerts.router_assessments, prefix="/api/assessments")
-    app.include_router(assessments_findings_risk_remediation_alerts.router_findings, prefix="/api/findings")
-    app.include_router(assessments_findings_risk_remediation_alerts.router_risk, prefix="/api/risk")
-    app.include_router(assessments_findings_risk_remediation_alerts.router_remediation, prefix="/api/remediation")
-    app.include_router(assessments_findings_risk_remediation_alerts.router_alerts, prefix="/api/alerts")
-    app.include_router(reports_agents_audit_ai_search_health_ws.router_reports, prefix="/api/reports")
-    app.include_router(reports_agents_audit_ai_search_health_ws.router_agents, prefix="/api/agents")
-    app.include_router(reports_agents_audit_ai_search_health_ws.router_audit, prefix="/api/audit")
-    app.include_router(reports_agents_audit_ai_search_health_ws.router_ai, prefix="/api/ai")
-    app.include_router(reports_agents_audit_ai_search_health_ws.router_search, prefix="/api/search")
+    app.include_router(hierarchy.router_formation, prefix="/api")
+    app.include_router(hierarchy.router_unit, prefix="/api")
+    app.include_router(hierarchy.router_site, prefix="/api")
+    app.include_router(hierarchy.router_network, prefix="/api")
+    app.include_router(assets_services_nodes.router_assets, prefix="/api")
+    app.include_router(assets_services_nodes.router_services, prefix="/api")
+    app.include_router(assets_services_nodes.router_nodes, prefix="/api")
+    app.include_router(assessments_findings_risk_remediation_alerts.router_assessments, prefix="/api")
+    app.include_router(assessments_findings_risk_remediation_alerts.router_findings, prefix="/api")
+    app.include_router(assessments_findings_risk_remediation_alerts.router_risk, prefix="/api")
+    app.include_router(assessments_findings_risk_remediation_alerts.router_remediation, prefix="/api")
+    app.include_router(assessments_findings_risk_remediation_alerts.router_alerts, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_reports, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_agents, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_audit, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_ai, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_search, prefix="/api")
     app.include_router(reports_agents_audit_ai_search_health_ws.router_health, prefix="/api")
+    app.include_router(reports_agents_audit_ai_search_health_ws.router_ws, prefix="/api")
 
     logger.info("All API routers registered")
     return app
@@ -123,3 +146,6 @@ def app_run():
 
 if __name__ == "__main__":
     app_run()
+
+# Module-level app for direct import (uvicorn, tests, etc.)
+app = create_application()

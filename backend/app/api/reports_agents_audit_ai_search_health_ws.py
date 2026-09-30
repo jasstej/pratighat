@@ -4,11 +4,13 @@ Pratighat.ai — API: Reports, Agents, Audit, AI, Search, Health, WebSocket
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, WebSocket, HTTPException
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, Query, Path, WebSocket, HTTPException
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -36,6 +38,8 @@ from app.schemas.alert_audit_agent_report_ai_search import (
     GlobalSearchResponse,
     PaginationParams,
 )
+
+logger = logging.getLogger("pratighat.api")
 
 router_reports = APIRouter(prefix="/reports", tags=["Reports"])
 router_agents = APIRouter(prefix="/agents", tags=["Agents"])
@@ -74,7 +78,7 @@ async def list_reports_api(
 
 @router_reports.get("/{report_id}", response_model=ReportDetail, summary="Get report detail")
 async def get_report_api(
-    report_id: int = Query(...),
+    report_id: int = Path(...),
     current_user: CurrentUser = Depends(require_permission(Permission.REPORT_VIEW)),
     session: AsyncSession = Depends(get_session),
 ) -> ReportDetail:
@@ -234,7 +238,7 @@ async def list_audit_events_api(
 
 @router_audit.get("/{event_id}/integrity", response_model=AuditIntegrityResponse, summary="Verify audit event integrity")
 async def verify_integrity_api(
-    event_id: int = Query(...),
+    event_id: int = Path(...),
     current_user: CurrentUser = Depends(require_permission(Permission.AUDIT_VIEW)),
     session: AsyncSession = Depends(get_session),
 ) -> AuditIntegrityResponse:
@@ -243,7 +247,7 @@ async def verify_integrity_api(
 
 @router_audit.get("/assessment/{assessment_id}/history", response_model=AssessmentHistoryListResponse, summary="Get assessment history")
 async def get_assessment_history_api(
-    assessment_id: int = Query(...),
+    assessment_id: int = Path(...),
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     current_user: CurrentUser = Depends(require_permission(Permission.ASSESSMENT_VIEW)),
@@ -262,7 +266,18 @@ async def analyze_query(
     current_user: CurrentUser = Depends(require_permission(Permission.AI_ANALYST)),
     session: AsyncSession = Depends(get_session),
 ) -> AIAnalysisResponse:
-    return await analyze(session, data, current_user)
+    # analyze() takes (query, context, scope_filters, ...); the previous call passed
+    # (session, data, user), so every request failed with 'AsyncSession' not subscriptable
+    context = dict(data.context or {})
+    context.setdefault("user_id", current_user.id)
+    context.setdefault("organization_id", current_user.organization_id)
+    return analyze(
+        data.query,
+        context,
+        data.scope_filters,
+        data.include_evidence,
+        data.max_sources,
+    )
 
 
 @router_ai.post("/analyze/stream", summary="Stream AI analysis (SSE)")
@@ -271,8 +286,17 @@ async def stream_analysis_api(
     current_user: CurrentUser = Depends(require_permission(Permission.AI_ANALYST)),
     session: AsyncSession = Depends(get_session),
 ):
-    from fastapi.responses import StreamingResponse
-    return await stream_analysis(session, data, current_user)
+    # stream_analysis is an async generator taking (query, context) — it must not
+    # be awaited, and the previous call passed (session, data, user), which raised
+    # TypeError on every request
+    context = dict(data.context or {})
+    context.setdefault("user_id", current_user.id)
+    context.setdefault("organization_id", current_user.organization_id)
+    return StreamingResponse(
+        stream_analysis(data.query, context),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 # ============================================================================
@@ -289,10 +313,17 @@ async def global_search_api(
     session: AsyncSession = Depends(get_session),
 ) -> GlobalSearchResponse:
     result = await search_all(session, q, page, page_size, organization_id)
+    total = result["total"]
+    # GlobalSearchResponse extends PaginatedResponse (items/total/page/page_size/pages),
+    # but the service returns the rows under "results" and no page metadata, so the
+    # old kwargs left required fields unset and every search request failed validation
     return GlobalSearchResponse(
         query=result["query"],
-        results=result["results"],
-        total=result["total"],
+        items=result["results"],
+        total=total,
+        page=page,
+        page_size=page_size,
+        pages=max(1, (total + page_size - 1) // page_size),
         took_ms=result["took_ms"],
         categories=result.get("by_category"),
     )
@@ -314,11 +345,15 @@ async def health_check(session: AsyncSession = Depends(get_session)) -> dict:
 
 @router_health.get("/ready", summary="Readiness probe")
 async def readiness_check(session: AsyncSession = Depends(get_session)) -> dict:
+    # SQLAlchemy 2.0 requires text() — a bare string is rejected.
+    # Surface the real error instead of swallowing it, otherwise a broken
+    # database is indistinguishable from a healthy one.
     try:
-        await session.execute("SELECT 1")
+        await session.execute(text("SELECT 1"))
         return {"status": "ready", "database": "ok"}
-    except Exception:
-        return {"status": "not_ready", "database": "error"}
+    except Exception as exc:
+        logger.warning("Readiness check failed: %s", exc)
+        return {"status": "not_ready", "database": "error", "detail": str(exc)}
 
 
 # ============================================================================
@@ -326,10 +361,10 @@ async def readiness_check(session: AsyncSession = Depends(get_session)) -> dict:
 # ============================================================================
 
 from app.core.database import engine as db_engine
-from app.models.node import Node
-from app.models.finding import Finding
-from app.models.alert import Alert
-from app.models.remediation import Remediation
+from app.models import Node
+from app.models import Finding
+from app.models import Alert
+from app.models import Remediation
 
 _websocket_connections: dict[int, list[WebSocket]] = {}  # user_id -> connections
 _formation_subscriptions: dict[int, list[WebSocket]] = {}  # formation_id -> connections

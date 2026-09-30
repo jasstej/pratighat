@@ -13,9 +13,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.audit import AuditEvent
-from app.models.assessment_history import AssessmentHistory
-from app.models.assessment import Assessment
+from app.models import AuditEvent
+from app.models import AssessmentHistory
+from app.models import Assessment
 from app.schemas.alert_audit_agent_report_ai_search import (
     AuditEventCreate,
     AuditEventRead,
@@ -44,7 +44,7 @@ async def log(
     checksum_algorithm: str = "sha256",
 ) -> AuditEvent:
     """Write an immutable audit event with SHA-256 integrity checksum."""
-    from app.models.organization import Organization
+    from app.models import Organization
 
     event = AuditEvent(
         organization_id=organization_id,

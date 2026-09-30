@@ -5,7 +5,11 @@ Authentication endpoints: register, login, refresh, me, password reset.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from datetime import datetime, timezone
+from typing import Optional
+
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_session
@@ -22,7 +26,7 @@ from app.core.security import (
     Permission,
     require_permission,
 )
-from app.models.user import User as UserModel
+from app.models import User as UserModel
 from app.schemas.alert_audit_agent_report_ai_search import (
     UserCreateRequest,
     UserLoginRequest,
@@ -44,8 +48,6 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 @router.post("/register", response_model=TokenResponse, summary="Register a new user")
 async def register(
     data: UserCreateRequest,
-    current_user: CurrentUser = Depends(require_permission(Permission.ORGANIZATION_CREATE)) if False else None,
-    # For demo: allow registration without org-creation permission if no org exists yet
     session: AsyncSession = Depends(get_session),
 ) -> TokenResponse:
     """Register a new user account. Super admin can create users in any organization."""
@@ -67,11 +69,6 @@ async def register(
         is_active=True,
         is_super_admin=False,
     )
-
-    if current_user and current_user.is_super_admin:
-        user.organization_id = current_user.organization_id
-        user.is_super_admin = False
-        user.role = "viewer"
 
     session.add(user)
     await session.flush()
@@ -114,7 +111,9 @@ async def login(
 ) -> TokenResponse:
     """Authenticate and receive access + refresh tokens."""
     result = await session.execute(
-        select(UserModel).where(UserModel.username == data.username)
+        select(UserModel).where(
+            (UserModel.username == data.username) | (UserModel.email == data.username)
+        )
     )
     user = result.scalar_one_or_none()
 
@@ -241,7 +240,9 @@ async def get_me(
         username=current_user.username,
         email=current_user.email,
         full_name=current_user.full_name,
-        role=current_user.role.value if hasattr(current_user, 'role') else "viewer",
+        # principal.role is a plain string (or None), not an enum — the old
+        # hasattr check passed for strings and then failed on .value
+        role=(current_user.role if isinstance(current_user.role, str) else None) or "viewer",
         is_super_admin=current_user.is_super_admin,
         organization_id=current_user.organization_id,
         is_active=current_user.is_active,
@@ -271,7 +272,9 @@ async def update_me(
         username=current_user.username,
         email=current_user.email,
         full_name=update_data.get("full_name", current_user.full_name),
-        role=current_user.role.value if hasattr(current_user, 'role') else "viewer",
+        # principal.role is a plain string (or None), not an enum — the old
+        # hasattr check passed for strings and then failed on .value
+        role=(current_user.role if isinstance(current_user.role, str) else None) or "viewer",
         is_super_admin=current_user.is_super_admin,
         organization_id=current_user.organization_id,
         is_active=current_user.is_active,
@@ -298,7 +301,7 @@ async def list_users(
 ) -> dict:
     """List users with pagination (requires admin permissions)."""
     from sqlalchemy import select, or_, func
-    from app.models.user import User as UserModel
+    from app.models import User as UserModel
 
     query = select(UserModel)
 
@@ -413,7 +416,7 @@ async def update_user_admin(
         setattr(user, field, value)
 
     if "role" in update_data:
-        from app.models.user import UserRole
+        from app.models import UserRole
         user.role = UserRole(update_data["role"])
 
     await session.flush()
@@ -451,7 +454,3 @@ async def deactivate_user_admin(
     await session.flush()
 
     return {"message": f"User '{user.username}' deactivated", "user_id": user.id}
-
-
-import datetime
-from datetime import datetime as _dt, timezone as _tz

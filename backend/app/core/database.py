@@ -24,33 +24,23 @@ logger = logging.getLogger("pratighat.db")
 # ------------------------------------------------------------------
 
 def _resolve_database_url() -> str:
-    """Resolve the database URL: PostgreSQL if available, SQLite fallback."""
+    """Resolve the database URL: PostgreSQL if available, SQLite fallback.
+
+    Selection is made from configuration only. An earlier version opened a probe
+    connection with loop.run_until_complete() at import time, which always raised
+    under uvicorn (a loop is already running there), so the app silently fell back
+    to SQLite even when PostgreSQL was healthy.
+    """
     if settings.use_sqlite():
         logger.info("Using SQLite database (development mode — no PostgreSQL)")
         return settings.database_sqlite_url
 
-    # Try to connect to PostgreSQL; fall back to SQLite if it fails
-    import asyncpg
-
-    try:
-        asyncio_import = __import__("asyncio")
-        loop = asyncio_import.get_event_loop()
-        conn = loop.run_until_complete(
-            asyncpg.connect(
-                host="localhost",
-                port=5432,
-                user="pratighat",
-                password="pratighat",
-                database="pratighat",
-                timeout=3,
-            )
-        )
-        conn.close()
-        logger.info("PostgreSQL is available — using PostgreSQL database")
+    if settings.database_url:
+        logger.info("Using PostgreSQL database")
         return settings.database_url
-    except Exception as e:
-        logger.warning("PostgreSQL not available (%s) — falling back to SQLite", e)
-        return settings.database_sqlite_url
+
+    logger.warning("No database URL configured — falling back to SQLite")
+    return settings.database_sqlite_url
 
 
 DATABASE_URL = _resolve_database_url()
@@ -60,15 +50,20 @@ DATABASE_URL = _resolve_database_url()
 # Engine & session factory
 # ------------------------------------------------------------------
 
-engine = create_async_engine(
-    DATABASE_URL,
-    echo=settings.database_echo,
-    pool_size=settings.database_pool_size,
-    max_overflow=settings.database_max_overflow,
-    pool_pre_ping=True,
-    pool_recycle=3600,
-    future=True,
-)
+_engine_kwargs: dict = {
+    "echo": settings.database_echo,
+    "pool_pre_ping": True,
+    "pool_recycle": 3600,
+    "future": True,
+}
+
+# SQLite's async dialect uses StaticPool/NullPool semantics and rejects
+# pool_size / max_overflow. Only pass them for poolable backends.
+if not DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs["pool_size"] = settings.database_pool_size
+    _engine_kwargs["max_overflow"] = settings.database_max_overflow
+
+engine = create_async_engine(DATABASE_URL, **_engine_kwargs)
 
 async_session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
     engine,

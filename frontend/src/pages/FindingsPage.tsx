@@ -265,6 +265,14 @@ function FindingDetailPanel({ finding, loading, onClose, onRefresh }: {
   const [updating, setUpdating] = useState(false)
   const [status, setStatus] = useState(finding.status)
 
+  const getStatusColor = (s: string) => {
+    const colors: Record<string, string> = {
+      open: '#f59e0b', confirmed: '#ef4444', in_progress: '#3b82f6',
+      remediated: '#10b981', verified: '#10b981', false_positive: '#64748b', closed: '#64748b',
+    }
+    return colors[s] || '#64748b'
+  }
+
   const handleStatusChange = async (newStatus: string) => {
     setUpdating(true)
     try {

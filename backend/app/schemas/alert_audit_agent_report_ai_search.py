@@ -8,14 +8,17 @@ Organized by domain. Each router imports only the schemas it needs.
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+T = TypeVar('T')
 
-# ============================================================================
+
+# ===========================================================================
 # Base / common
-# ============================================================================
+# ===========================================================================
+
 
 class PaginationParams(BaseModel):
     """Standard pagination parameters."""
@@ -23,9 +26,9 @@ class PaginationParams(BaseModel):
     page_size: int = Field(50, ge=1, le=200, description="Items per page")
 
 
-class PaginatedResponse(BaseModel):
+class PaginatedResponse(BaseModel, Generic[T]):
     """Wraps any list response with pagination metadata."""
-    items: List[Any]
+    items: List[T]
     total: int
     page: int
     page_size: int
@@ -40,9 +43,9 @@ class TimestampMixin(BaseModel):
     updated_at: datetime
 
 
-# ============================================================================
+# ===========================================================================
 # Auth
-# ============================================================================
+# ===========================================================================
 
 class UserCreateRequest(BaseModel):
     username: str = Field(..., min_length=3, max_length=64, pattern=r"^[a-zA-Z0-9_-]+$")
@@ -92,9 +95,9 @@ class UserUpdateRequest(BaseModel):
     is_active: Optional[bool] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Organizations
-# ============================================================================
+# ===========================================================================
 
 class OrganizationCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -119,6 +122,10 @@ class OrganizationUpdateRequest(BaseModel):
 
 
 class OrganizationBrief(BaseModel):
+    # from_attributes lets routes validate SQLAlchemy ORM rows directly
+    # (Organization.model_validate(org)) without hand-built dicts
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     name: str
     slug: str
@@ -137,9 +144,9 @@ class OrganizationDetail(OrganizationBrief, TimestampMixin):
     formation_count: Optional[int] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Formations
-# ============================================================================
+# ===========================================================================
 
 class FormationCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -176,9 +183,9 @@ class FormationDetail(FormationBrief, TimestampMixin):
     metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
 
 
-# ============================================================================
+# ===========================================================================
 # Units
-# ============================================================================
+# ===========================================================================
 
 class UnitCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -215,9 +222,9 @@ class UnitDetail(UnitBrief, TimestampMixin):
     metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
 
 
-# ============================================================================
+# ===========================================================================
 # Sites
-# ============================================================================
+# ===========================================================================
 
 class SiteCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -261,9 +268,9 @@ class SiteDetail(SiteBrief, TimestampMixin):
     metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
 
 
-# ============================================================================
+# ===========================================================================
 # Networks
-# ============================================================================
+# ===========================================================================
 
 class NetworkCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -309,9 +316,9 @@ class NetworkDetail(NetworkBrief, TimestampMixin):
     metadata_: Optional[Dict[str, Any]] = Field(None, alias="metadata")
 
 
-# ============================================================================
+# ===========================================================================
 # Assets
-# ============================================================================
+# ===========================================================================
 
 class AssetCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -388,9 +395,9 @@ class AssetDetail(AssetBrief, TimestampMixin):
     finding_count: Optional[int] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Services
-# ============================================================================
+# ===========================================================================
 
 class ServiceCreateRequest(BaseModel):
     asset_id: int
@@ -423,9 +430,9 @@ class ServiceDetail(ServiceBrief, TimestampMixin):
     last_detected_at: Optional[datetime] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Nodes
-# ============================================================================
+# ===========================================================================
 
 class NodeCreateRequest(BaseModel):
     organization_id: int
@@ -500,9 +507,9 @@ class NodeStatusResponse(BaseModel):
     scanners: List[NodeBrief]
 
 
-# ============================================================================
+# ===========================================================================
 # Assessments
-# ============================================================================
+# ===========================================================================
 
 class AssessmentCreateRequest(BaseModel):
     name: str = Field(..., max_length=255)
@@ -590,13 +597,13 @@ class AssessmentRunRequest(BaseModel):
     callback_url: Optional[str] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Scan Targets (sub-resource of assessments)
-# ============================================================================
+# ===========================================================================
 
 class ScanTargetRequest(BaseModel):
     target_type: str = Field(..., pattern=r"^(network|webapp|api|domain|mixed)$")
-    targets: List[str]  # IPs, domains, URLs — validated against scope
+    targets: List[str]
 
 
 class ScanTargetResponse(BaseModel):
@@ -607,9 +614,9 @@ class ScanTargetResponse(BaseModel):
     rejected_targets: List[str]
 
 
-# ============================================================================
+# ===========================================================================
 # Findings
-# ============================================================================
+# ===========================================================================
 
 class FindingCreateRequest(BaseModel):
     title: str = Field(..., max_length=512)
@@ -702,9 +709,9 @@ class FindingEvidenceBrief(BaseModel):
     created_at: datetime
 
 
-# ============================================================================
+# ===========================================================================
 # Risk
-# ============================================================================
+# ===========================================================================
 
 class RiskCreateRequest(BaseModel):
     finding_id: int
@@ -739,9 +746,9 @@ class RiskDetail(RiskBrief, TimestampMixin):
     estimated_effort: Optional[str] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Remediation
-# ============================================================================
+# ===========================================================================
 
 class RemediationCreateRequest(BaseModel):
     finding_id: Optional[int] = None
@@ -800,9 +807,9 @@ class RemediationDetail(RemediationBrief, TimestampMixin):
     assigned_to: Optional[UserBrief] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Alerts
-# ============================================================================
+# ===========================================================================
 
 class AlertCreateRequest(BaseModel):
     title: str = Field(..., max_length=512)
@@ -853,25 +860,22 @@ class AlertDetail(AlertBrief, TimestampMixin):
     suppress_until: Optional[datetime] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Reports
-# ============================================================================
+# ===========================================================================
 
 class ReportGenerateRequest(BaseModel):
     report_type: str = Field(..., pattern=r"^(executive_security|formation_security|unit_security|technical_vapt|vulnerability|remediation|assessment_history|audit)$")
     format: str = Field("json", pattern=r"^(json|pdf|csv)$")
 
-    # Scope filters
     organization_id: Optional[int] = None
     formation_id: Optional[int] = None
     unit_id: Optional[int] = None
     assessment_id: Optional[int] = None
 
-    # Optional date range
     from_date: Optional[datetime] = None
     to_date: Optional[datetime] = None
 
-    # Optional filters
     severity_filter: Optional[List[str]] = None
     status_filter: Optional[List[str]] = None
     include_unverified: bool = False
@@ -917,9 +921,9 @@ class ReportDetail(ReportBrief, TimestampMixin):
     scope_assessment_id: Optional[int] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Audit
-# ============================================================================
+# ===========================================================================
 
 class AuditEventCreate(BaseModel):
     action: str = Field(..., max_length=128)
@@ -974,9 +978,9 @@ class AuditIntegrityResponse(BaseModel):
     message: str
 
 
-# ============================================================================
+# ===========================================================================
 # AI Analyst
-# ============================================================================
+# ===========================================================================
 
 class AIAnalysisRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=2000)
@@ -996,9 +1000,9 @@ class AIAnalysisResponse(BaseModel):
     generated_at: str
 
 
-# ============================================================================
+# ===========================================================================
 # Search
-# ============================================================================
+# ===========================================================================
 
 class GlobalSearchResponse(PaginatedResponse[Dict[str, Any]]):
     query: str
@@ -1006,9 +1010,9 @@ class GlobalSearchResponse(PaginatedResponse[Dict[str, Any]]):
     categories: Optional[Dict[str, Any]] = None
 
 
-# ============================================================================
+# ===========================================================================
 # Schemas registry — re-export for convenience
-# ============================================================================
+# ===========================================================================
 
 __all__ = [
     # Auth

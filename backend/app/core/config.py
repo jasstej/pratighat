@@ -8,8 +8,9 @@ from __future__ import annotations
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -62,6 +63,12 @@ class Settings(BaseSettings):
 
     # SQLite fallback for development (no PostgreSQL available)
     database_sqlite_url: str = "sqlite+aiosqlite:///./pratighat.db"
+
+    # Explicit opt-in for the SQLite fallback. Left unset, PostgreSQL is used
+    # in every environment. Set USE_SQLITE=true to run against the local file DB.
+    use_sqlite_override: Optional[bool] = Field(
+        default=None, validation_alias="USE_SQLITE"
+    )
 
     # ------------------------------------------------------------------
     # Redis
@@ -118,8 +125,16 @@ class Settings(BaseSettings):
         return self.environment == "test"
 
     def use_sqlite(self) -> bool:
-        """Use SQLite when no PostgreSQL is available (dev/test)."""
-        return self.is_development or self.is_test
+        """Use SQLite only when explicitly requested.
+
+        Previously this returned True for any non-production environment, which
+        meant a dev setup could never talk to PostgreSQL. Selection is now driven
+        by the explicit USE_SQLITE flag; SQLite remains available as an opt-in
+        fallback (e.g. for quick tests) via USE_SQLITE=true.
+        """
+        if self.use_sqlite_override is not None:
+            return self.use_sqlite_override
+        return False
 
 
 @lru_cache

@@ -12,12 +12,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.report import Report, ReportType, ReportFormat
-from app.models.assessment import Assessment
-from app.models.finding import Finding
-from app.models.organization import Organization
-from app.models.formation import Formation
-from app.models.unit import Unit
+from app.models import Report, ReportType, ReportFormat
+from app.models import Assessment
+from app.models import Finding
+from app.models import Organization
+from app.models import Formation
+from app.models import Unit
 from app.schemas.alert_audit_agent_report_ai_search import (
     ReportGenerateRequest,
     ReportResult,
@@ -82,7 +82,7 @@ async def _generate_executive_security(session, org_id, current_user):
         data={
             "organization": {"name": org.name, "slug": org.slug},
             "generated_at": datetime.now(timezone.utc).isoformat(),
-            "summary": _build_executive_summary(session, org_id),
+            "summary": await _build_executive_summary(session, org_id),
         },
         generated_by_id=current_user.id if current_user else None,
         generated_by_name=current_user.username if current_user else "system",
@@ -109,7 +109,7 @@ async def _generate_executive_security(session, org_id, current_user):
     )
 
 
-def _build_executive_summary(session, org_id):
+async def _build_executive_summary(session, org_id):
     """Build executive summary data from current state."""
     from sqlalchemy import func
 
@@ -204,7 +204,7 @@ async def _generate_formation_security(session, org_id, formation_id, current_us
         data={
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "formation_id": formation_id,
-            "summary": _build_formation_summary(session, org_id, formation_id),
+            "summary": await _build_formation_summary(session, org_id, formation_id),
         },
         generated_by_id=current_user.id if current_user else None,
         generated_by_name=current_user.username if current_user else "system",
@@ -232,14 +232,14 @@ async def _generate_formation_security(session, org_id, formation_id, current_us
     )
 
 
-def _build_formation_summary(session, org_id, formation_id):
+async def _build_formation_summary(session, org_id, formation_id):
     from sqlalchemy import func
 
     asset_filter = {}
     if formation_id:
         asset_filter["formation_id"] = formation_id
 
-    from app.models.asset import Asset
+    from app.models import Asset
     asset_count = (await session.execute(
         select(func.count()).select_from(Asset).where(Asset.organization_id == org_id)
     )).scalar() or 0
@@ -268,7 +268,7 @@ async def _generate_unit_security(session, org_id, unit_id, current_user):
         data={
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "unit_id": unit_id,
-            "summary": _build_unit_summary(session, org_id, unit_id),
+            "summary": await _build_unit_summary(session, org_id, unit_id),
         },
         generated_by_id=current_user.id if current_user else None,
         generated_by_name=current_user.username if current_user else "system",
@@ -296,7 +296,7 @@ async def _generate_unit_security(session, org_id, unit_id, current_user):
     )
 
 
-def _build_unit_summary(session, org_id, unit_id):
+async def _build_unit_summary(session, org_id, unit_id):
     return {"unit_id": unit_id, "status": "active", "assets": []}
 
 
@@ -375,10 +375,10 @@ async def _generate_vulnerability(session, org_id, current_user, data):
 
     query = select(Finding).where(Finding.organization_id == org_id)
     if data.severity_filter:
-        from app.models.finding import FindingSeverity
+        from app.models import FindingSeverity
         query = query.where(Finding.severity.in_([FindingSeverity(s) for s in data.severity_filter]))
     if data.status_filter:
-        from app.models.finding import FindingStatus
+        from app.models import FindingStatus
         query = query.where(Finding.status.in_([FindingStatus(s) for s in data.status_filter]))
     if not data.include_unverified:
         query = query.where(Finding.is_false_positive == False)
@@ -445,7 +445,7 @@ async def _generate_remediation(session, org_id, current_user, data):
         __import__("app.models.remediation").Remediation.organization_id == org_id
     )
     if data.status_filter:
-        from app.models.remediation import RemediationStatus
+        from app.models import RemediationStatus
         query = query.where(__import__("app.models.remediation").Remediation.status.in_(
             [RemediationStatus(s) for s in data.status_filter]
         ))
@@ -505,7 +505,7 @@ async def _generate_remediation(session, org_id, current_user, data):
 async def _generate_assessment_history(session, org_id, current_user):
     """Assessment execution history report."""
     from datetime import datetime, timezone
-    from app.models.assessment import Assessment
+    from app.models import Assessment
 
     result = await session.execute(
         select(Assessment).where(Assessment.organization_id == org_id)
@@ -566,7 +566,7 @@ async def _generate_assessment_history(session, org_id, current_user):
 async def _generate_audit(session, org_id, current_user):
     """Audit log report."""
     from datetime import datetime, timezone
-    from app.models.audit import AuditEvent
+    from app.models import AuditEvent
 
     result = await session.execute(
         select(AuditEvent).where(AuditEvent.organization_id == org_id)

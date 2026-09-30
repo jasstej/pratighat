@@ -37,6 +37,16 @@ ENV/
 .DS_Store
 Thumbs.db
 
+# Secrets / env
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
 # Project specific
 *.db
 *.sqlite

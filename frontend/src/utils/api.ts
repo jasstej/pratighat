@@ -126,6 +126,8 @@ export const api = {
   listAlerts: (orgId: number, params?: any) =>
     request<any>(`/alerts?org_id=${orgId}` + new URLSearchParams(params as any).toString()),
 
+  getAlert: (id: number) => request<any>(`/alerts/${id}`),
+
   acknowledgeAlert: (id: number) =>
     request<any>(`/alerts/${id}/acknowledge`, { method: 'POST' }),
 

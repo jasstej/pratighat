@@ -15,30 +15,34 @@ import logging
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any, Dict, Optional
 
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from pydantic import BaseModel
 
 from app.core.config import settings
 
 logger = logging.getLogger("pratighat.security")
 
 # ---------------------------------------------------------------------------
-# Password hashing
+# Password hashing (bcrypt direct — avoids passlib 1.7.4 / bcrypt 5.x bug)
 # ---------------------------------------------------------------------------
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt_rounds=settings.bcrypt_rounds)
 
 
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
-    return pwd_context.hash(password)
+    pwd_bytes = password.encode("utf-8")
+    salt = bcrypt.gensalt(rounds=settings.bcrypt_rounds)
+    return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return bcrypt.checkpw(
+        plain_password.encode("utf-8"),
+        hashed_password.encode("utf-8"),
+    )
 
 
 def is_password_strong(password: str) -> bool:
@@ -128,34 +132,29 @@ def get_token_data(credentials: Optional[HTTPAuthorizationCredentials] = Depends
 
 
 # ---------------------------------------------------------------------------
-# User model (in-memory for now — backed by DB models in production)
+# User model (Pydantic for FastAPI dependency compatibility)
 # ---------------------------------------------------------------------------
 
 
-class User:
-    """Minimal user model for auth dependencies."""
+class User(BaseModel):
+    """Minimal user model for auth dependencies.
 
-    def __init__(
-        self,
-        id: int,
-        username: str,
-        email: str,
-        hashed_password: str,
-        is_active: bool = True,
-        is_super_admin: bool = False,
-        roles: list[str] | None = None,
-        permissions: list[str] | None = None,
-        organization_id: int = 0,
-    ):
-        self.id = id
-        self.username = username
-        self.email = email
-        self.hashed_password = hashed_password
-        self.is_active = is_active
-        self.is_super_admin = is_super_admin
-        self.roles = roles or []
-        self.permissions = permissions or []
-        self.organization_id = organization_id
+    Mirrors the users table. full_name/role/avatar_url are optional because
+    some code paths build a principal from token claims alone.
+    """
+
+    id: int
+    username: str
+    email: str
+    hashed_password: str = ""
+    full_name: Optional[str] = None
+    role: Optional[str] = None
+    avatar_url: Optional[str] = None
+    is_active: bool = True
+    is_super_admin: bool = False
+    roles: list[str] = []
+    permissions: list[str] = []
+    organization_id: int = 0
 
     def has_role(self, role: str) -> bool:
         return role in self.roles or self.is_super_admin
@@ -179,31 +178,50 @@ async def get_current_user(
 ) -> User:
     """FastAPI dependency: resolve the current authenticated user from JWT.
 
-    In production, this queries the database. For now, returns a
-    populated User from token claims (used by demo/dummy auth).
+    The token identifies the user; identity fields are read from the database so
+    authorisation decisions (role, org, active flag) reflect current state and
+    cannot be spoofed via token claims.
     """
     user_id = int(credentials.get("sub", 0))
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token subject")
 
-    # Production: fetch from DB
-    # from app.models.user import User as DBUser
-    # user = await session.get(DBUser, user_id)
-    # if not user or not user.is_active: raise 401
+    from app.core.database import async_session_factory
+    from app.models import User as DBUser
+    from sqlalchemy import select
 
-    roles = credentials.get("roles", "").split(",") if credentials.get("roles") else []
-    permissions = credentials.get("permissions", "").split(",") if credentials.get("permissions") else []
-    org_id = int(credentials.get("org_id", 0))
+    async with async_session_factory() as session:
+        db_user = await session.execute(select(DBUser).where(DBUser.id == user_id))
+        record = db_user.scalar_one_or_none()
+
+    if record is None:
+        raise HTTPException(status_code=401, detail="User not found")
+    if not record.is_active:
+        raise HTTPException(status_code=401, detail="User account is disabled")
+
+    # roles/permissions are not columns on the users table — they come from the
+    # token claims; authoritative identity fields come from the database row.
+    roles = list(credentials.get("roles", "").split(",")) if credentials.get("roles") else []
+    if record.role and record.role.value not in roles:
+        roles.append(record.role.value)
+    permissions = (
+        list(credentials.get("permissions", "").split(","))
+        if credentials.get("permissions")
+        else []
+    )
 
     return User(
-        id=user_id,
-        username=f"user-{user_id}",
-        email=f"user-{user_id}@pratighat.ai",
-        hashed_password="",
-        is_active=True,
+        id=record.id,
+        username=record.username,
+        email=record.email,
+        full_name=record.full_name,
+        role=record.role.value if record.role else None,
+        avatar_url=record.avatar_url,
+        is_active=record.is_active,
+        is_super_admin=bool(record.is_super_admin),
         roles=roles,
         permissions=permissions,
-        organization_id=org_id,
+        organization_id=record.organization_id or 0,
     )
 
 
@@ -217,8 +235,8 @@ async def get_optional_user(
 
 
 # Type alias for dependency injection
-CurrentUser = Annotated[User, Depends(get_current_user)]
-OptionalUser = Annotated[Optional[User], Depends(get_optional_user)]
+CurrentUser = User
+OptionalUser = Optional[User]
 
 
 # ---------------------------------------------------------------------------
@@ -333,7 +351,10 @@ class Permission:
 def require_permission(permission: str):
     """Dependency factory: require a specific permission to access an endpoint."""
 
-    async def check(current_user: CurrentUser) -> User:
+    # current_user must be declared as a Depends(get_current_user) dependency.
+    # As a bare User annotation FastAPI classifies it as a request-body field,
+    # which wraps every endpoint's real JSON payload in a synthetic envelope.
+    async def check(current_user: User = Depends(get_current_user)) -> User:
         if not current_user.has_permission(permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -347,7 +368,7 @@ def require_permission(permission: str):
 def require_role(role: str):
     """Dependency factory: require a specific role to access an endpoint."""
 
-    async def check(current_user: CurrentUser) -> User:
+    async def check(current_user: User = Depends(get_current_user)) -> User:
         if not current_user.has_role(role):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -358,7 +379,7 @@ def require_role(role: str):
     return check
 
 
-def require_super_admin(current_user: CurrentUser) -> User:
+def require_super_admin(current_user: User = Depends(get_current_user)) -> User:
     """Dependency: require super_admin role."""
     if not current_user.is_super_admin:
         raise HTTPException(status_code=403, detail="Super admin access required")
